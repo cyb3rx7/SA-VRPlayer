@@ -1,0 +1,100 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة التحكم في SA VRPlayer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f9f9f9; text-align: center; padding: 20px; }
+        h1 { color: #005f73; }
+        select, button, input[type=range] { font-size: 18px; margin: 10px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🎮 لوحة التحكم في SA VRPlayer 🎥</h1>
+
+    <div>
+        <label for="deviceIP">📡 اختر الجهاز:</label>
+        <select id="deviceIP"></select>
+        <button onclick="scanDevices()">🔍 بحث عن الأجهزة</button>
+    </div>
+
+    <div>
+        <label for="videoSelect">🎞 اختر الفيديو:</label>
+        <select id="videoSelect"></select>
+        <button onclick="loadVideoList()">📁 تحميل قائمة الفيديو</button>
+    </div>
+
+    <div>
+        <button onclick="sendCommand('play')">▶️ تشغيل</button>
+        <button onclick="sendCommand('pause')">⏸ إيقاف مؤقت</button>
+        <button onclick="sendCommand('stop')">⏹ إيقاف</button>
+    </div>
+
+    <div>
+        <label for="volume">🔊 مستوى الصوت:</label>
+        <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5"
+               onchange="changeVolume(this.value)">
+    </div>
+
+    <video id="preview" controls>
+        <source src="sample.mp4" type="video/mp4">
+        المتصفح لا يدعم عرض الفيديو.
+    </video>
+
+    <script>
+        let selectedIP = "";
+
+        function scanDevices() {
+            const base = "192.168.1.";
+            const dropdown = document.getElementById("deviceIP");
+            dropdown.innerHTML = "";
+            for (let i = 2; i < 255; i++) {
+                const ip = base + i;
+                fetch(`http://${ip}:8080/ping`).then(resp => {
+                    if (resp.ok) {
+                        const option = document.createElement("option");
+                        option.value = ip;
+                        option.textContent = "جهاز: " + ip;
+                        dropdown.appendChild(option);
+                    }
+                }).catch(() => {});
+            }
+        }
+
+        document.getElementById("deviceIP").addEventListener("change", function () {
+            selectedIP = this.value;
+        });
+
+        function sendCommand(cmd) {
+            if (!selectedIP) return alert("يرجى اختيار الجهاز أولاً");
+            fetch(`http://${selectedIP}:8080`, {
+                method: 'POST',
+                body: cmd,
+                headers: { 'Content-Type': 'text/plain' }
+            });
+        }
+
+        function changeVolume(val) {
+            sendCommand("volume " + val);
+        }
+
+        function loadVideoList() {
+            if (!selectedIP) return alert("يرجى اختيار الجهاز أولاً");
+            fetch(`http://${selectedIP}:8080/videos`)
+                .then(res => res.json())
+                .then(videos => {
+                    const dropdown = document.getElementById("videoSelect");
+                    dropdown.innerHTML = "";
+                    videos.forEach(video => {
+                        const option = document.createElement("option");
+                        option.value = video;
+                        option.textContent = video;
+                        dropdown.appendChild(option);
+                    });
+                })
+                .catch(() => alert("لم يتم العثور على قائمة الفيديوهات من الجهاز."));
+        }
+    </script>
+</body>
+</html>
